@@ -1,0 +1,31 @@
+[package]
+name = "street-cred"
+version = "0.1.0"
+edition = "2021"
+authors = ["Endoze <endoze@endozemedia.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Endoze/street-cred"
+documentation = "https://docs.rs/street-cred"
+homepage = "https://github.com/Endoze/street-cred"
+
+[lib]
+name = "street_cred"
+
+[dependencies]
+aws-secrets = { version = "0.1.1", features = ["sm"] }
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1" 
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4.0.4", features = ["derive"] }
+base64 = { version = "0.13.0" }
+hex = { version = "0.4.3" }
+rust-crypto = { version = "0.2.36" }
+shellexpand = { version = "2.1.2" }
+thurgood = { version = "0.2.1" }
+rand = { version = "0.8.5" }
+anyhow = { version = "1.0.65" }
+
+[dev-dependencies]
+assert_fs = { version = "1.0.7" }
+lazy_static = { version = "1.4.0" }

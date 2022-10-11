@@ -1,0 +1,4 @@
+[test_config]
+skip-clean = true
+exclude-files = ["target"]
+target-dir = "coverage"
