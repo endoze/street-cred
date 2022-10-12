@@ -6,6 +6,7 @@
 Manage encrypted secrets for your applications.
 
 ## Installation
+
 ```sh
 cargo install street-cred
 ```
