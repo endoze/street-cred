@@ -83,4 +83,12 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn deserialization_of_invalid_data() {
+    let test_string = "\x04\x08I\"\x1dPeanut Butter Jelly TimeET";
+    let deserialized_string = RubyMarshal::deserialize(test_string);
+
+    assert!(deserialized_string.is_err());
+  }
 }
