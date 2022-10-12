@@ -2,3 +2,5 @@
 skip-clean = true
 exclude-files = ["target"]
 target-dir = "coverage"
+out = ["Lcov"]
+output-dir = "coverage"
