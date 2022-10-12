@@ -1,5 +1,6 @@
 /target
 master.key
 credentials.yml.enc
+secrets.yml.enc
 *.profraw
 coverage/*

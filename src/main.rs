@@ -25,6 +25,8 @@ enum Commands {
   Get(Get),
   /// Read contents of a file
   Edit(Edit),
+  /// Initialize new secrets file
+  Init(Init),
 }
 
 #[derive(Args)]
@@ -39,6 +41,9 @@ struct Get {
 struct Edit {
   file_name: String,
 }
+
+#[derive(Args)]
+struct Init {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -62,6 +67,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           }
         }
 
+        Err(why) => println!("{}", why),
+      }
+    }
+    Commands::Init(..) => {
+      match FileEncryption::create("./") {
+        Ok(_) => {},
         Err(why) => println!("{}", why),
       }
     }
