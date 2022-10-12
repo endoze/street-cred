@@ -1,5 +1,8 @@
 # Street Cred
 
+![Build Status](https://github.com/endoze/street-cred/actions/workflows/ci.yml/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/endoze/street-cred/badge.svg?branch=master)](https://coveralls.io/github/endoze/street-cred?branch=master)
+
 Manage encrypted secrets for your applications.
 
 ## Installation
