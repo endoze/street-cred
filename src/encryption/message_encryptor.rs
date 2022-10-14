@@ -1,12 +1,12 @@
 #![allow(unused)]
 
 use crate::serialization::RubyMarshal;
+use crate::CipherGeneration;
 use anyhow::anyhow;
 use core::iter::repeat;
 use core::str;
 use crypto::aead::{AeadDecryptor, AeadEncryptor};
 use crypto::aes_gcm::AesGcm;
-use rand::RngCore;
 use std::fmt::Display;
 
 /// A storage container that represents a message you want to encrypt/decrypt.
@@ -134,7 +134,7 @@ impl MessageEncryption {
   pub fn encrypt(&self) -> anyhow::Result<String> {
     if let (Ok(key), Ok(decoded_aad)) = (hex_to_bytes(&self.key), base64::decode(&self.aad)) {
       let key_size = crypto::aes::KeySize::KeySize128;
-      let random_iv = Self::random_iv();
+      let random_iv = CipherGeneration::random_iv();
       let mut cipher = AesGcm::new(key_size, &key, &random_iv, &decoded_aad);
 
       let serialized_message = RubyMarshal::serialize(std::str::from_utf8(&self.message)?)?;
@@ -196,15 +196,6 @@ impl MessageEncryption {
     } else {
       Err(anyhow!("Invalid encrypted contents"))
     }
-  }
-
-  /// Generates a random 12 byte initialization vector and returns it as a
-  /// `Vec<u8>`
-  fn random_iv() -> Vec<u8> {
-    let mut data = [0u8; 12];
-    rand::thread_rng().fill_bytes(&mut data);
-
-    data.to_vec()
   }
 }
 

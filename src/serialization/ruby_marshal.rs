@@ -1,5 +1,6 @@
 #![allow(unused)]
 use anyhow::anyhow;
+use anyhow::Context;
 use thurgood::rc::{from_reader, to_writer, Error, RbAny, RbFields, RbRef};
 
 /// Struct used to house the serialize/deserialize functions.
@@ -49,7 +50,7 @@ impl RubyMarshal {
     let ruby_contents = from_reader(cursor)?;
     let content = ruby_contents
       .as_string()
-      .ok_or_else(|| anyhow!("deserialization failed"))?;
+      .context("deserialization failed")?;
 
     Ok(content.as_bytes().into())
   }
