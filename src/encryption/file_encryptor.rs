@@ -3,7 +3,7 @@
 use crate::CipherGeneration;
 use crate::MessageEncryption;
 use crate::RubyMarshal;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -91,7 +91,7 @@ impl FileEncryption {
 
       let template_string = "CHANGE ME";
 
-      let fc = FileEncryption::new(filename.clone(), key);
+      let fc = FileEncryption::new(filename, key);
       let encrypted_contents = fc.encrypt(template_string.as_bytes(), &iv, "")?;
 
       fs::write(encrypted_file_path, encrypted_contents)?;
@@ -237,7 +237,7 @@ impl FileEncryption {
     let mut temp_directory_path = env::temp_dir();
     let original_filename = PathBuf::from(&self.file_path)
       .file_name()
-      .ok_or_else(|| anyhow!("Could not generate absolute path for encrypted file"))?
+      .context("Could not generate absolute path for encrypted file")?
       .to_owned();
 
     let final_path = format!("{}.{}", process::id(), original_filename.to_string_lossy());
@@ -269,7 +269,7 @@ impl FileEncryption {
     } else {
       key_path = pathbuf
         .parent()
-        .ok_or_else(|| anyhow!("Could not get parent directory for output"))?
+        .context("Could not get parent directory for output")?
         .to_path_buf();
       encrypted_file_path = pathbuf;
 
@@ -278,7 +278,7 @@ impl FileEncryption {
 
     let filename = encrypted_file_path
       .file_name()
-      .ok_or_else(|| anyhow!("Could not get filename for output"))?
+      .context("Could not get filename for output")?
       .to_string_lossy()
       .to_string();
 
