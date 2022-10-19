@@ -436,13 +436,27 @@ mod tests {
   }
 
   #[test]
-  fn test_create() -> anyhow::Result<()> {
+  fn test_create_with_dir() -> anyhow::Result<()> {
     let temp = assert_fs::TempDir::new().unwrap();
     let temp_path_string = temp.to_string_lossy().to_string();
 
     let _ = FileEncryption::create(&temp_path_string);
 
     assert!(temp.child("credentials.yml.enc").exists());
+    assert!(temp.child("master.key").exists());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_create_with_filename() -> anyhow::Result<()> {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let temp_file = temp.child("encrypted.txt");
+    let temp_path_string = temp_file.to_string_lossy().to_string();
+
+    let _ = FileEncryption::create(&temp_path_string);
+
+    assert!(temp.child("encrypted.txt").exists());
     assert!(temp.child("master.key").exists());
 
     Ok(())
