@@ -2,6 +2,8 @@
 
 ![Build Status](https://github.com/endoze/street-cred/actions/workflows/ci.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/endoze/street-cred/badge.svg?branch=master)](https://coveralls.io/github/endoze/street-cred?branch=master)
+[![Crate](https://img.shields.io/crates/v/street-cred.svg)](https://crates.io/crates/street-cred)
+[![Docs](https://docs.rs/street-cred/badge.svg)](https://docs.rs/street-cred)
 
 Manage encrypted secrets for your applications.
 
