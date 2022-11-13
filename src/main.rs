@@ -1,10 +1,8 @@
 #![cfg(not(tarpaulin_include))]
-use aws_secrets::{config_from_env, SecretsExt};
-use clap::{Args, Parser, Subcommand};
-use street_cred::FileEncryption;
-use serde::{Deserialize, Serialize};
-use serde_json::{to_string, Value};
 use anyhow::anyhow;
+use clap::{Args, Parser, Subcommand};
+use serde::{Deserialize, Serialize};
+use street_cred::FileEncryption;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct App {
@@ -21,20 +19,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-  /// Retrieve a key from aws secrets
-  Get(Get),
   /// Read contents of a file
   Edit(Edit),
   /// Initialize new secrets file
   Init(Init),
-}
-
-#[derive(Args)]
-struct Get {
-  /// Name of secret in aws secrets
-  bag_name: String,
-  /// Name of key in bag to retrieve
-  key_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -50,45 +38,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let cli = Cli::parse();
 
   match cli.command {
-    Commands::Get(get) => {
-      let secret_string = retrieve_aws_secret(&get.bag_name).await?;
+    Commands::Edit(file) => match retrieve_encryption_key() {
+      Ok(key) => {
+        let fc = FileEncryption::new(file.file_name, key);
+        let result = fc.edit();
 
-      println!("{}", secret_string.master_key);
-    }
-    Commands::Edit(file) => {
-      match retrieve_encryption_key() {
-        Ok(key) => {
-          let fc = FileEncryption::new(file.file_name, key);
-          let result = fc.edit();
-
-          match result {
-            Ok(_) => {}
-            Err(why) => println!("{}", why),
-          }
+        match result {
+          Ok(_) => {}
+          Err(why) => println!("{}", why),
         }
+      }
 
-        Err(why) => println!("{}", why),
-      }
-    }
-    Commands::Init(..) => {
-      match FileEncryption::create("./") {
-        Ok(_) => {},
-        Err(why) => println!("{}", why),
-      }
-    }
+      Err(why) => println!("{}", why),
+    },
+    Commands::Init(..) => match FileEncryption::create("./") {
+      Ok(_) => {}
+      Err(why) => println!("{}", why),
+    },
   }
 
   Ok(())
-}
-
-#[allow(unused)]
-async fn retrieve_aws_secret(bag_name: &str) -> Result<App, Box<dyn std::error::Error>> {
-  let shared_config = config_from_env().await;
-  let value: Value = bag_name.get_secret(&shared_config).await?;
-
-  let app: App = serde_json::from_str(&to_string(&value)?)?;
-
-  Ok(app)
 }
 
 fn retrieve_encryption_key() -> anyhow::Result<String> {
