@@ -8,6 +8,7 @@ readme = "README.md"
 repository = "https://github.com/Endoze/street-cred"
 documentation = "https://docs.rs/street-cred"
 homepage = "https://github.com/Endoze/street-cred"
+description = "Manage encrypted secrets for your applications."
 
 [lib]
 name = "street_cred"
