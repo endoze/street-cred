@@ -308,8 +308,6 @@ orange: false";
 
     let result = encryptor.encrypt();
 
-    println!("BANANANANANANANANANA: {:#?}", result);
-
     assert!(result.is_err());
   }
 
