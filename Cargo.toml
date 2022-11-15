@@ -1,6 +1,6 @@
 [package]
 name = "street-cred"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Endoze <endoze@endozemedia.com>"]
 license = "MIT"
