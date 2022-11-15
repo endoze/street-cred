@@ -1,13 +1,10 @@
-#![allow(unused)]
-
 use crate::serialization::RubyMarshal;
 use crate::CipherGeneration;
+use aes_gcm::{
+  aead::{generic_array::GenericArray, Aead, KeyInit},
+  Aes128Gcm,
+};
 use anyhow::anyhow;
-use core::iter::repeat;
-use core::str;
-use crypto::aead::{AeadDecryptor, AeadEncryptor};
-use crypto::aes_gcm::AesGcm;
-use std::fmt::Display;
 
 /// A storage container that represents a message you want to encrypt/decrypt.
 /// In order for both operations to work, you also need to store the encryption key
@@ -61,7 +58,7 @@ impl MessageEncryption {
   /// # Arguments
   ///
   /// * `iv` - Initialization vector used when initially encrypting the message
-  /// * `encrypted_aad` - Additional Authenticated data resulting from encrypting the message
+  /// * `tag` - Additional Authenticated data resulting from encrypting the message
   ///
   /// # Examples
   ///
@@ -72,40 +69,40 @@ impl MessageEncryption {
   /// let key = "425D76994EE6101105DDDA2EE2604AA0";
   /// let plaintext_aad = "";
   /// let iv = "fWoW3cyLE2/JfiiF";
-  /// let encrypted_aad = "DyMEJPXzmksJGb+QumM2Rd6X";
+  /// let tag = "DyMEJPXzmksJGb+QumM2Rd6X";
   ///
   /// let decryptor = MessageEncryption::new(encrypted_message, key, plaintext_aad);
-  /// let decrypted_contents = decryptor.decrypt(iv, encrypted_aad);
+  /// let decrypted_contents = decryptor.decrypt(iv, tag);
   ///
   /// match decrypted_contents {
   ///   Ok(contents) => println!("Decrypted Contents: {}", contents),
   ///   Err(why) => println!("Error: {}", why),
   /// }
   /// ```
-  pub fn decrypt(&self, iv: &str, encrypted_aad: &str) -> anyhow::Result<String> {
-    if let (Ok(key), Ok(iv), Ok(message), Ok(aad), Ok(encrypted_aad)) = (
+  pub fn decrypt(&self, iv: &str, tag: &str) -> anyhow::Result<String> {
+    if let (Ok(key), Ok(iv), Ok(message), Ok(tag)) = (
       hex_to_bytes(&self.key),
       base64::decode(iv),
       base64::decode(&self.message),
-      base64::decode(&self.aad),
-      base64::decode(encrypted_aad),
+      base64::decode(tag),
     ) {
-      let key_size = crypto::aes::KeySize::KeySize128;
-      let mut decipher = AesGcm::new(key_size, &key, &iv, &aad);
+      let key = GenericArray::from_slice(&key);
+      let iv = GenericArray::from_slice(&iv);
+      let decipher = Aes128Gcm::new(key);
 
-      // create output buffer the same size as the encrypted message
-      // this is where we will store the decrypted message results
-      let mut decrypted_output_buffer: Vec<u8> = repeat(0).take(message.len()).collect();
+      let mut ciphertext = message;
+      ciphertext.extend_from_slice(&tag);
 
-      let result = decipher.decrypt(
-        &message,
-        &mut decrypted_output_buffer[..],
-        &encrypted_aad[..],
-      );
+      let payload = aes_gcm::aead::Payload {
+        msg: &ciphertext,
+        aad: self.aad.as_bytes(),
+      };
 
-      let content = RubyMarshal::deserialize(&decrypted_output_buffer)?;
+      let plaintext = decipher.decrypt(iv, payload);
 
-      if result {
+      if let Ok(plaintext) = plaintext {
+        let content = RubyMarshal::deserialize(&plaintext)?;
+
         return Ok(String::from_utf8(content)?);
       }
     }
@@ -132,35 +129,33 @@ impl MessageEncryption {
   /// }
   /// ```
   pub fn encrypt(&self) -> anyhow::Result<String> {
-    if let (Ok(key), Ok(decoded_aad)) = (hex_to_bytes(&self.key), base64::decode(&self.aad)) {
-      let key_size = crypto::aes::KeySize::KeySize128;
+    if let Ok(key) = hex_to_bytes(&self.key) {
+      let key = GenericArray::from_slice(&key);
       let random_iv = CipherGeneration::random_iv();
-      let mut cipher = AesGcm::new(key_size, &key, &random_iv, &decoded_aad);
+      let random_iv = GenericArray::from_slice(&random_iv);
+      let cipher = Aes128Gcm::new(key);
 
       let serialized_message = RubyMarshal::serialize(std::str::from_utf8(&self.message)?)?;
 
-      // create output buffer the same size as the message to be encrypted
-      // this is where we will store the encrypted message results
-      let mut encrypted_output: Vec<u8> = repeat(0).take(serialized_message.len()).collect();
+      let payload = aes_gcm::aead::Payload {
+        msg: &serialized_message,
+        aad: self.aad.as_bytes(),
+      };
 
-      // create output buffer the same size as the auth tag
-      // this is where we will store the encrypted auth tag results
-      let mut encrypted_aad_output: Vec<u8> = repeat(0).take(16).collect();
+      let encrypted = cipher.encrypt(random_iv, payload);
 
-      cipher.encrypt(
-        &serialized_message,
-        &mut encrypted_output[..],
-        &mut encrypted_aad_output[..],
-      );
+      if let Ok(encrypted) = encrypted {
+        let (ct, tag) = encrypted.split_at(encrypted.len() - 16);
 
-      let encryption_result = format!(
-        "{}--{}--{}",
-        base64::encode(encrypted_output),
-        base64::encode(random_iv),
-        base64::encode(encrypted_aad_output)
-      );
+        let encryption_result = format!(
+          "{}--{}--{}",
+          base64::encode(ct),
+          base64::encode(random_iv),
+          base64::encode(tag)
+        );
 
-      return Ok(encryption_result);
+        return Ok(encryption_result);
+      }
     }
 
     Err(anyhow!("Encryption not successful"))
@@ -206,8 +201,6 @@ fn hex_to_bytes(raw_hex: &str) -> Result<Vec<u8>, hex::FromHexError> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::FileEncryption;
-  use std::io;
 
   #[test]
   fn test_encrypt_decrypt_cycle() {
@@ -259,27 +252,52 @@ orange: false";
       Ok(decrypted_contents) => {
         assert_eq!(decrypted_contents.as_bytes(), plaintext_message);
       }
-      Err(why) => panic!("second decryption failed"),
+      Err(_) => panic!("second decryption failed"),
     };
   }
 
   #[test]
-  fn test_decryption_fails() {
+  fn test_encryption_decryption_with_aad() {
     let key = "8872ebc11db3ea2ed08cc629d199b164";
+    let aad = "some value";
+    let plaintext_message = "banana: true
+  apple: false
+  orange: false";
+
+    let encryptor = MessageEncryption::new(plaintext_message.as_bytes().to_vec(), key, aad);
+
+    let encrypted_result = match encryptor.encrypt() {
+      Ok(encrypted_contents) => encrypted_contents,
+      Err(..) => panic!("first encryption failed"),
+    };
+
+    let split_data = MessageEncryption::split_encrypted_contents(&encrypted_result).unwrap();
+
+    let new_message = split_data[0];
+    let new_iv = split_data[1];
+    let new_aad = split_data[2];
+
+    let decryptor = MessageEncryption::new(new_message.as_bytes().to_vec(), key, aad);
+
+    let result = decryptor.decrypt(new_iv, new_aad);
+
+    assert_eq!(plaintext_message, result.unwrap());
+  }
+
+  #[test]
+  fn test_decryption_fails_with_incorrect_iv() {
+    let key = "94b6b40cabf62ee59c9aa13a86f0e7d7";
     let aad = "";
-    let plaintext_message = b"banana: true
-apple: false
-orange: false";
+    let encrypted_message = b"1alR88JGbSy1wz44cgVgZC3mH2Fg9HjRFtl6NwRoOfpqNzJ61Ub48O1YhJUqaszJgJ8=";
+    let decryptor = MessageEncryption::new(encrypted_message.to_vec(), key, aad);
 
-    let decryptor = MessageEncryption::new(plaintext_message.to_vec(), key, aad);
-
-    let result = decryptor.decrypt("", "banana");
+    let result = decryptor.decrypt("123456789012345", "pksKcg/so9Pq3UMHjfnVsg==");
 
     assert!(result.is_err());
   }
 
   #[test]
-  fn test_encryption_fails() {
+  fn test_encryption_fails_with_non_hex_key() {
     let key = "8872ebc11db3ea2";
     let aad = "";
     let plaintext_message = b"banana: true
@@ -289,6 +307,8 @@ orange: false";
     let encryptor = MessageEncryption::new(plaintext_message.to_vec(), key, aad);
 
     let result = encryptor.encrypt();
+
+    println!("BANANANANANANANANANA: {:#?}", result);
 
     assert!(result.is_err());
   }
@@ -305,21 +325,6 @@ orange: false";
     let decryptor = MessageEncryption::new(plaintext_message.to_vec(), key, aad);
 
     let result = decryptor.decrypt("", invalid_aad);
-
-    assert!(result.is_err());
-  }
-
-  #[test]
-  fn test_invalid_aad_for_encrypt() {
-    let invalid_aad = "66ag";
-    let key = "8872ebc11db3ea2";
-    let plaintext_message = b"banana: true
-apple: false
-orange: false";
-
-    let encryptor = MessageEncryption::new(plaintext_message.to_vec(), key, invalid_aad);
-
-    let result = encryptor.encrypt();
 
     assert!(result.is_err());
   }

@@ -1,15 +1,13 @@
-#![allow(unused)]
-
 use crate::CipherGeneration;
 use crate::MessageEncryption;
-use crate::RubyMarshal;
 use anyhow::{anyhow, Context};
 use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::{fs, io};
-use thurgood::rc::{from_reader, to_writer, Error, RbAny, RbRef};
+
+static EMPTY_AAD_STRING: &str = "";
 
 /// Represents an encryped file that we can edit the contents of while
 /// preserving the encryption.
@@ -76,23 +74,17 @@ impl FileEncryption {
   /// let _ = FileEncryption::create(&file_path);
   /// ```
   pub fn create(path: &str) -> anyhow::Result<()> {
-    let mut pathbuf = PathBuf::from(path);
-
-    let mut key_path = PathBuf::new();
-    let mut encrypted_file_path = PathBuf::new();
-
     let (filename, key_path, encrypted_file_path) = Self::output_info_for_create(path)?;
 
     if !key_path.exists() && !encrypted_file_path.exists() {
       let key = CipherGeneration::random_key();
-      let iv = base64::encode(CipherGeneration::random_iv());
 
       fs::write(key_path, &key)?;
 
       let template_string = "CHANGE ME";
 
       let fc = FileEncryption::new(filename, key);
-      let encrypted_contents = fc.encrypt(template_string.as_bytes(), &iv, "")?;
+      let encrypted_contents = fc.encrypt(template_string.as_bytes())?;
 
       fs::write(encrypted_file_path, encrypted_contents)?;
     } else {
@@ -106,23 +98,23 @@ impl FileEncryption {
   /// If no EDITOR environment variable is set, will default to vim.
   pub fn edit(&self) -> anyhow::Result<()> {
     match self.decrypt() {
-      Ok((contents, iv, aad)) => {
+      Ok(contents) => {
         let temp_file_path = self.temp_file_location()?;
 
         self.write_file(temp_file_path.clone(), contents.clone())?;
 
-        Self::launch_editor_for_path(&temp_file_path);
+        Self::launch_editor_for_path(&temp_file_path)?;
 
         let old_file_contents = contents;
         let temp_file_contents = fs::read_to_string(temp_file_path.clone())?;
 
         if old_file_contents != temp_file_contents {
-          let encrypted_contents = self.encrypt(temp_file_contents.as_bytes(), &iv, "")?;
+          let encrypted_contents = self.encrypt(temp_file_contents.as_bytes())?;
 
           self.write_file(temp_file_path, encrypted_contents)?;
           self.replace_file_atomically()?;
         } else {
-          fs::remove_file(temp_file_path);
+          fs::remove_file(temp_file_path)?;
         }
       }
 
@@ -145,19 +137,20 @@ impl FileEncryption {
   /// let file_path = String::from("some_file.txt");
   /// let key = String::from("425D76994EE6101105DDDA2EE2604AA0");
   /// let file_encryption = FileEncryption::new(file_path, key);
-  /// // let (contents, iv, aad) = file_encryption.decrypt()?;
+  /// // let contents = file_encryption.decrypt()?;
   /// ```
-  pub fn decrypt(&self) -> anyhow::Result<(String, String, String)> {
+  pub fn decrypt(&self) -> anyhow::Result<String> {
     let contents = self.read_file()?;
     let split_contents = MessageEncryption::split_encrypted_contents(&contents)?;
     let message = split_contents[0];
     let iv = split_contents[1];
     let encrypted_aad = split_contents[2];
 
-    let decryptor = MessageEncryption::new(message.as_bytes().to_vec(), &self.key, "");
+    let decryptor =
+      MessageEncryption::new(message.as_bytes().to_vec(), &self.key, EMPTY_AAD_STRING);
 
     match decryptor.decrypt(iv, encrypted_aad) {
-      Ok(decrypted_contents) => Ok((decrypted_contents, iv.into(), encrypted_aad.into())),
+      Ok(decrypted_contents) => Ok(decrypted_contents),
       Err(why) => Err(anyhow!("Invalid encrypted contents in decrypt: {}", why)),
     }
   }
@@ -173,13 +166,11 @@ impl FileEncryption {
   /// let key = String::from("425D76994EE6101105DDDA2EE2604AA0");
   /// let file_encryption = FileEncryption::new(file_path, key);
   /// let contents = "a secret message";
-  /// let iv = "fWoW3cyLE2/JfiiF";
-  /// let aad = "";
   ///
-  /// // let encrypted_contents = file_encryption.encrypt()?;
+  /// // let encrypted_contents = file_encryption.encrypt(contents)?;
   /// ```
-  pub fn encrypt(&self, contents: &[u8], iv: &str, aad: &str) -> anyhow::Result<String> {
-    let encryptor = MessageEncryption::new(contents.to_vec(), &self.key, aad);
+  pub fn encrypt(&self, contents: &[u8]) -> anyhow::Result<String> {
+    let encryptor = MessageEncryption::new(contents.to_vec(), &self.key, EMPTY_AAD_STRING);
 
     match encryptor.encrypt() {
       Ok(encrypted_contents) => Ok(encrypted_contents),
@@ -226,7 +217,7 @@ impl FileEncryption {
 
   fn replace_file_atomically(&self) -> anyhow::Result<()> {
     let path = PathBuf::from(&self.file_path);
-    let mut temp_file_path = self.temp_file_location()?;
+    let temp_file_path = self.temp_file_location()?;
 
     fs::rename(temp_file_path, path)?;
 
@@ -257,8 +248,8 @@ impl FileEncryption {
   fn output_info_for_create(path: &str) -> anyhow::Result<(String, PathBuf, PathBuf)> {
     let mut pathbuf = PathBuf::from(path);
 
-    let mut key_path = PathBuf::new();
-    let mut encrypted_file_path = PathBuf::new();
+    let mut key_path;
+    let mut encrypted_file_path;
 
     if pathbuf.is_dir() {
       encrypted_file_path = pathbuf.clone();
@@ -375,7 +366,7 @@ mod tests {
         String::from("200a0e90e538d17390c8c4bc3bc71e44"),
       );
 
-      file_encryption.edit();
+      let _ = file_encryption.edit();
     });
   }
 
@@ -406,14 +397,12 @@ mod tests {
 
       let file_encryption = FileEncryption::new(
         input_file.to_string_lossy().to_string(),
-        String::from("200a0e80e538d17390c8c4bc3bc71e44"),
+        String::from("v200a0e80e538d17390c8c4bc3bc71e44"),
       );
 
       let message = String::from("super secret contents");
-      let iv = "66ag";
-      let invalid_aad = "66ag=========";
 
-      let result = file_encryption.encrypt(message.as_bytes(), iv, invalid_aad);
+      let result = file_encryption.encrypt(message.as_bytes());
 
       assert!(result.is_err());
     });
@@ -476,7 +465,7 @@ mod tests {
     let temp = assert_fs::TempDir::new().unwrap();
     let temp_path_string = temp.to_string_lossy().to_string();
 
-    let first = FileEncryption::create(&temp_path_string);
+    let _first = FileEncryption::create(&temp_path_string);
     let second = FileEncryption::create(&temp_path_string);
 
     assert!(second.is_err());

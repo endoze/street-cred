@@ -26,6 +26,9 @@ cargo add street-cred
 Street Cred expects your encryption key to be in an environment variable named `MASTER_KEY` or in a file in the current directory named `master.key`.
 
 ```sh
+# Initialize a new project with an encrypted secrets file and encryption key
+street-cred init
+
 # Edit existing file
 street-cred edit secrets.txt.enc
 ```
@@ -41,8 +44,8 @@ let file_path = String::from("secrets.txt.enc");
 let encryption_key = String::from("425D76994EE6101105DDDA2EE2604AA0");
 let file_encryption = FileEncryption::new(file_path, encryption_key);
 
-if let Some((decrypted_contents, initialization_vector, additional_authenticated_data)) = file_encryption.decrypt() {
-  // do something with decrypted_contents, initialization_vector, additional_authenticated_data
+if let Some(decrypted_contents) = file_encryption.decrypt() {
+  // do something with decrypted_contents
 };
 ```
 
