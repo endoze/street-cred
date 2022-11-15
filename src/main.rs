@@ -33,8 +33,7 @@ struct Edit {
 #[derive(Args)]
 struct Init {}
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
   let cli = Cli::parse();
 
   match cli.command {
