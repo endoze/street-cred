@@ -1,6 +1,6 @@
 use rand::RngCore;
 
-// Struct used to house cipher data generation.
+/// Collection of functions that generate random data for encryption/decryption.
 pub struct CipherGeneration {}
 
 impl CipherGeneration {

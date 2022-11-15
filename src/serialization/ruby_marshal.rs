@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use anyhow::Context;
 use thurgood::rc::{from_reader, to_writer, Error, RbAny, RbFields, RbRef};
 
-/// Struct used to house the serialize/deserialize functions.
+/// Collection of functions used for serialize/deserialize in the RubyMarshal format.
 pub struct RubyMarshal {}
 
 impl RubyMarshal {
@@ -17,9 +17,11 @@ impl RubyMarshal {
   /// ```
   /// use street_cred::RubyMarshal;
   ///
-  /// let string = "banana";
+  /// let string = "Peanut Butter Jelly Time";
   ///
   /// let serialized = RubyMarshal::serialize(string);
+  ///
+  /// assert_eq!(b"\x04\x08I\"\x1dPeanut Butter Jelly Time\x06:\x06ET", serialized.unwrap().as_slice());
   /// ```
   pub fn serialize(contents: &str) -> anyhow::Result<Vec<u8>> {
     let mut buffer = Vec::new();
@@ -28,7 +30,7 @@ impl RubyMarshal {
     Ok(buffer)
   }
 
-  /// Deserialize data into the Ruby Marshal format.
+  /// Deserialize data from the Ruby Marshal format.
   ///
   /// # Arguments
   /// * `contents` - Data to deserialize
@@ -41,6 +43,8 @@ impl RubyMarshal {
   /// let data = b"\x04\x08I\"\x1dPeanut Butter Jelly Time\x06:\x06ET";
   ///
   /// let string = RubyMarshal::deserialize(data);
+  ///
+  /// assert_eq!(b"Peanut Butter Jelly Time", string.unwrap().as_slice());
   /// ```
   pub fn deserialize<T>(contents: T) -> anyhow::Result<Vec<u8>>
   where
