@@ -1,7 +1,5 @@
-#![allow(unused)]
-use anyhow::anyhow;
 use anyhow::Context;
-use thurgood::rc::{from_reader, to_writer, Error, RbAny, RbFields, RbRef};
+use thurgood::rc::{from_reader, to_writer, RbAny, RbRef};
 
 /// Collection of functions used for serialize/deserialize in the RubyMarshal format.
 pub struct RubyMarshal {}
@@ -25,7 +23,7 @@ impl RubyMarshal {
   /// ```
   pub fn serialize(contents: &str) -> anyhow::Result<Vec<u8>> {
     let mut buffer = Vec::new();
-    let bytes_written = to_writer(&mut buffer, &RbAny::from(RbRef::Str(contents.to_string())));
+    let _bytes_written = to_writer(&mut buffer, &RbAny::from(RbRef::Str(contents.to_string())));
 
     Ok(buffer)
   }
