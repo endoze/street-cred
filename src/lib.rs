@@ -42,8 +42,8 @@
 //! Encrypting/Decrypting files can be accomplished with [FileEncryption].
 //!
 //! Encrypting/Decrypting data directly can be accomplished using [MessageEncryption]. While using
-//! MessageEncryption, you'll need to provide some random data for the encryption process like the
-//! encryption key and initialization vector. street-cred provides a few utility functions for this
+//! MessageEncryption, you'll need to provide some data for the encryption process like the
+//! encryption key and additional authenticated data. street-cred provides a few utility functions for this
 //! data via [CipherGeneration].
 //!
 
