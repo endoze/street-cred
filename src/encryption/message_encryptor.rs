@@ -5,6 +5,7 @@ use aes_gcm::{
   Aes128Gcm,
 };
 use anyhow::anyhow;
+use base64::{engine::general_purpose, Engine as _};
 
 /// A storage container that represents a message you want to encrypt/decrypt.
 /// In order for both operations to work, you also need to store the encryption key
@@ -82,9 +83,9 @@ impl MessageEncryption {
   pub fn decrypt(&self, iv: &str, tag: &str) -> anyhow::Result<String> {
     if let (Ok(key), Ok(iv), Ok(message), Ok(tag)) = (
       hex_to_bytes(&self.key),
-      base64::decode(iv),
-      base64::decode(&self.message),
-      base64::decode(tag),
+      general_purpose::STANDARD.decode(iv),
+      general_purpose::STANDARD.decode(&self.message),
+      general_purpose::STANDARD.decode(tag),
     ) {
       let key = GenericArray::from_slice(&key);
       let iv = GenericArray::from_slice(&iv);
@@ -101,7 +102,7 @@ impl MessageEncryption {
       let plaintext = decipher.decrypt(iv, payload);
 
       if let Ok(plaintext) = plaintext {
-        let content = RubyMarshal::deserialize(&plaintext)?;
+        let content = RubyMarshal::deserialize(plaintext)?;
 
         return Ok(String::from_utf8(content)?);
       }
@@ -149,9 +150,9 @@ impl MessageEncryption {
 
         let encryption_result = format!(
           "{}--{}--{}",
-          base64::encode(ct),
-          base64::encode(random_iv),
-          base64::encode(tag)
+          general_purpose::STANDARD.encode(ct),
+          general_purpose::STANDARD.encode(random_iv),
+          general_purpose::STANDARD.encode(tag)
         );
 
         return Ok(encryption_result);
