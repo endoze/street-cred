@@ -17,9 +17,9 @@ name = "street_cred"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1" 
 clap = { version = "4.0.4", features = ["derive"] }
-base64 = { version = "0.13.0" }
+base64 = { version = "0.21" }
 hex = { version = "0.4.3" }
-shellexpand = { version = "2.1.2" }
+shellexpand = { version = "3.1" }
 thurgood = { version = "0.2.1" }
 anyhow = { version = "1.0.65" }
 aes-gcm = "0.10.1"
@@ -27,3 +27,21 @@ aes-gcm = "0.10.1"
 [dev-dependencies]
 assert_fs = { version = "1.0.7" }
 lazy_static = { version = "1.4.0" }
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.4.2"
+# CI backends to support
+ci = ["github"]
+# The installers to generate for each app
+installers = ["shell", "powershell"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-musl", "x86_64-pc-windows-msvc"]
+# Publish jobs to run in CI
+pr-run-mode = "plan"

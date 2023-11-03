@@ -179,16 +179,21 @@ impl FileEncryption {
   }
 
   fn launch_editor_for_path(path: &Path) -> anyhow::Result<()> {
-    let editor = match std::env::var("EDITOR") {
+    let mut editor = match std::env::var("EDITOR") {
       Ok(editor) => editor,
       Err(_) => String::from("vim"),
     };
-    let editor_command = format!("{} {}", editor, path.canonicalize()?.to_string_lossy());
+
+    editor.push(' ');
+    editor.push_str(&path.to_string_lossy());
+
+    #[cfg(test)]
+    editor.insert_str(0, "vim(){ :; }; ");
 
     std::process::Command::new("/usr/bin/env")
       .arg("sh")
       .arg("-c")
-      .arg(editor_command)
+      .arg(&editor)
       .spawn()
       .expect("Error: Failed to run editor")
       .wait()
@@ -338,6 +343,24 @@ mod tests {
   #[test]
   fn test_edit() {
     with_env_vars(vec![("EDITOR", Some("echo"))], || {
+      let temp = assert_fs::TempDir::new().unwrap();
+      let input_file = temp.child("encoded.txt.enc");
+      temp
+        .copy_from("./tests/fixtures/", &["*.txt", "*.enc"])
+        .unwrap();
+
+      let file_encryption = FileEncryption::new(
+        input_file.to_string_lossy().to_string(),
+        String::from("200a0e90e538d17390c8c4bc3bc71e44"),
+      );
+
+      assert!(file_encryption.edit().is_ok());
+    });
+  }
+
+  #[test]
+  fn test_edit_no_editor_environment_variable() {
+    with_env_vars(vec![("EDITOR", None)], || {
       let temp = assert_fs::TempDir::new().unwrap();
       let input_file = temp.child("encoded.txt.enc");
       temp
