@@ -1,6 +1,6 @@
 use aes_gcm::{
-  aead::{rand_core::RngCore, KeyInit, OsRng},
   Aes128Gcm,
+  aead::{KeyInit, OsRng, rand_core::RngCore},
 };
 
 /// Collection of functions that generate random data for encryption/decryption.

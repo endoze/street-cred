@@ -1,5 +1,5 @@
 use anyhow::Context;
-use thurgood::rc::{from_reader, to_writer, RbAny, RbRef};
+use thurgood::rc::{RbAny, RbRef, from_reader, to_writer};
 
 /// Collection of functions used for serialize/deserialize in the RubyMarshal format.
 pub struct RubyMarshal {}

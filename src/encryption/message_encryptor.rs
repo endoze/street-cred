@@ -1,11 +1,11 @@
-use crate::serialization::RubyMarshal;
 use crate::CipherGeneration;
+use crate::serialization::RubyMarshal;
 use aes_gcm::{
-  aead::{generic_array::GenericArray, Aead, KeyInit},
   Aes128Gcm,
+  aead::{Aead, KeyInit, generic_array::GenericArray},
 };
 use anyhow::anyhow;
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 
 /// A storage container that represents a message you want to encrypt/decrypt.
 /// In order for both operations to work, you also need to store the encryption key
@@ -170,7 +170,7 @@ impl MessageEncryption {
   /// # Arguments
   ///
   /// * `contents` - The entire encrypted file as one long string. Encrypted
-  /// contents should be formatted like this: "message--iv--aad"
+  ///   contents should be formatted like this: "message--iv--aad"
   ///
   /// # Examples
   ///

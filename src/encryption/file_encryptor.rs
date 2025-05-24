@@ -1,6 +1,6 @@
 use crate::CipherGeneration;
 use crate::MessageEncryption;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -88,7 +88,9 @@ impl FileEncryption {
 
       fs::write(encrypted_file_path, encrypted_contents)?;
     } else {
-      return Err(anyhow!("It seems you may have already initialized this directory. Either master.key and/or credentials.yml.enc already exist."));
+      return Err(anyhow!(
+        "It seems you may have already initialized this directory. Either master.key and/or credentials.yml.enc already exist."
+      ));
     }
 
     Ok(())
@@ -309,8 +311,8 @@ mod tests {
       let old_v = env::var(k);
       old_kvs.push((k, old_v));
       match v {
-        None => env::remove_var(k),
-        Some(v) => env::set_var(k, v),
+        None => unsafe { env::remove_var(k) },
+        Some(v) => unsafe { env::set_var(k, v) },
       }
     }
 
@@ -334,9 +336,9 @@ mod tests {
 
   fn reset_env(k: &str, old: Result<String, VarError>) {
     if let Ok(v) = old {
-      env::set_var(k, v);
+      unsafe { env::set_var(k, v) };
     } else {
-      env::remove_var(k);
+      unsafe { env::remove_var(k) };
     }
   }
 
