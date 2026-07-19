@@ -1,6 +1,6 @@
 use aes_gcm::{
   Aes128Gcm,
-  aead::{KeyInit, OsRng, rand_core::RngCore},
+  aead::{Generate, Key},
 };
 
 /// Collection of functions that generate random data for encryption/decryption.
@@ -32,7 +32,8 @@ impl CipherGeneration {
   /// let key = CipherGeneration::random_key();
   /// ```
   pub fn random_key() -> String {
-    let key = Aes128Gcm::generate_key(&mut OsRng);
+    let key = Key::<Aes128Gcm>::generate();
+
     hex::encode(key)
   }
 
@@ -44,7 +45,8 @@ impl CipherGeneration {
   ///
   fn random_bytes(length: usize) -> Vec<u8> {
     let mut data = vec![0; length];
-    OsRng.fill_bytes(&mut data);
+
+    getrandom::fill(&mut data).expect("failed to read random bytes from the operating system");
 
     data
   }
