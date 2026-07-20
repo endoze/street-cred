@@ -241,10 +241,10 @@ impl FileEncryption {
     let final_path = format!("{}.{}", process::id(), original_filename.to_string_lossy());
     let mut final_path = PathBuf::from(final_path);
 
-    if let Some(extension) = final_path.extension() {
-      if OsStr::new("enc") == extension {
-        final_path.set_extension("");
-      }
+    if let Some(extension) = final_path.extension()
+      && OsStr::new("enc") == extension
+    {
+      final_path.set_extension("");
     }
 
     temp_directory_path.push(final_path);
@@ -288,15 +288,12 @@ impl FileEncryption {
 mod tests {
   use super::*;
   use assert_fs::prelude::*;
-  use lazy_static::lazy_static;
   use std::env::VarError;
   use std::panic::{RefUnwindSafe, UnwindSafe};
-  use std::sync::Mutex;
+  use std::sync::{LazyLock, Mutex};
   use std::{env, panic};
 
-  lazy_static! {
-    static ref SERIAL_TEST: Mutex<()> = Default::default();
-  }
+  static SERIAL_TEST: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
   /// Sets environment variables to the given value for the duration of the closure.
   /// Restores the previous values when the closure completes or panics, before unwinding the panic.

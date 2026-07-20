@@ -2,7 +2,7 @@ use crate::CipherGeneration;
 use crate::serialization::RubyMarshal;
 use aes_gcm::{
   Aes128Gcm,
-  aead::{Aead, KeyInit, generic_array::GenericArray},
+  aead::{Aead, KeyInit, Nonce},
 };
 use anyhow::anyhow;
 use base64::{Engine as _, engine::general_purpose};
@@ -86,12 +86,12 @@ impl MessageEncryption {
       general_purpose::STANDARD.decode(iv),
       general_purpose::STANDARD.decode(&self.message),
       general_purpose::STANDARD.decode(tag),
+    ) && let (Ok(decipher), Ok(nonce)) = (
+      Aes128Gcm::new_from_slice(&key),
+      Nonce::<Aes128Gcm>::try_from(iv.as_slice()),
     ) {
-      let key = GenericArray::from_slice(&key);
-      let iv = GenericArray::from_slice(&iv);
-      let decipher = Aes128Gcm::new(key);
-
       let mut ciphertext = message;
+
       ciphertext.extend_from_slice(&tag);
 
       let payload = aes_gcm::aead::Payload {
@@ -99,7 +99,7 @@ impl MessageEncryption {
         aad: self.aad.as_bytes(),
       };
 
-      let plaintext = decipher.decrypt(iv, payload);
+      let plaintext = decipher.decrypt(&nonce, payload);
 
       if let Ok(plaintext) = plaintext {
         let content = RubyMarshal::deserialize(plaintext)?;
@@ -131,31 +131,33 @@ impl MessageEncryption {
   /// ```
   pub fn encrypt(&self) -> anyhow::Result<String> {
     if let Ok(key) = hex_to_bytes(&self.key) {
-      let key = GenericArray::from_slice(&key);
       let random_iv = CipherGeneration::random_iv();
-      let random_iv = GenericArray::from_slice(&random_iv);
-      let cipher = Aes128Gcm::new(key);
 
-      let serialized_message = RubyMarshal::serialize(std::str::from_utf8(&self.message)?)?;
+      if let (Ok(cipher), Ok(nonce)) = (
+        Aes128Gcm::new_from_slice(&key),
+        Nonce::<Aes128Gcm>::try_from(random_iv.as_slice()),
+      ) {
+        let serialized_message = RubyMarshal::serialize(std::str::from_utf8(&self.message)?)?;
 
-      let payload = aes_gcm::aead::Payload {
-        msg: &serialized_message,
-        aad: self.aad.as_bytes(),
-      };
+        let payload = aes_gcm::aead::Payload {
+          msg: &serialized_message,
+          aad: self.aad.as_bytes(),
+        };
 
-      let encrypted = cipher.encrypt(random_iv, payload);
+        let encrypted = cipher.encrypt(&nonce, payload);
 
-      if let Ok(encrypted) = encrypted {
-        let (ct, tag) = encrypted.split_at(encrypted.len() - 16);
+        if let Ok(encrypted) = encrypted {
+          let (ct, tag) = encrypted.split_at(encrypted.len() - 16);
 
-        let encryption_result = format!(
-          "{}--{}--{}",
-          general_purpose::STANDARD.encode(ct),
-          general_purpose::STANDARD.encode(random_iv),
-          general_purpose::STANDARD.encode(tag)
-        );
+          let encryption_result = format!(
+            "{}--{}--{}",
+            general_purpose::STANDARD.encode(ct),
+            general_purpose::STANDARD.encode(&random_iv),
+            general_purpose::STANDARD.encode(tag)
+          );
 
-        return Ok(encryption_result);
+          return Ok(encryption_result);
+        }
       }
     }
 

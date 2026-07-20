@@ -1,13 +1,7 @@
 #![cfg(not(tarpaulin_include))]
 use anyhow::anyhow;
 use clap::{Args, Parser, Subcommand};
-use serde::{Deserialize, Serialize};
 use street_cred::FileEncryption;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct App {
-  master_key: String,
-}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
