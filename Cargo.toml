@@ -2,13 +2,12 @@
 name = "street-cred"
 version = "0.1.6"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.89"
 authors = ["Endoze <endoze@endozemedia.com>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Endoze/street-cred"
 documentation = "https://docs.rs/street-cred"
-homepage = "https://github.com/Endoze/street-cred"
 description = "Manage encrypted secrets for your applications."
 categories = ["cryptography", "command-line-utilities", "config"]
 keywords = ["secrets", "encryption", "credentials", "aes", "config"]
@@ -18,7 +17,7 @@ name = "street_cred"
 
 [dependencies]
 clap = { version = "4.6.2", features = ["derive"] }
-base64 = { version = "0.22.1" }
+base64 = { version = "0.23.1" }
 hex = { version = "0.4.3" }
 shellexpand = { version = "3.1" }
 thurgood = { version = "0.2.1" }
