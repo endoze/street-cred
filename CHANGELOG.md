@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8](https://github.com/endoze/street-cred/compare/v0.1.7...v0.1.8) - 2026-11-18
+
+### Other
+
+- exclude repo tooling from the published crate
+
 ## [0.1.7](https://github.com/endoze/street-cred/compare/v0.1.6...v0.1.7) - 2026-11-18
 
 ### Other
